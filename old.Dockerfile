@@ -9,9 +9,6 @@ RUN npm install --legacy-peer-deps
 COPY . .
 RUN rm -rf ./backend ./analize
 
-ARG OPENAI_API_KEY=dummy-key-for-build
-ENV OPENAI_API_KEY=$OPENAI_API_KEY
-
 RUN npm run build
 
 # Etap produkcyjny
