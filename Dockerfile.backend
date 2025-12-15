@@ -1,0 +1,30 @@
+# Backend Dockerfile - poprawiona wersja
+FROM python:3.12-slim
+
+# Ustawienie katalogu roboczego
+WORKDIR /app
+
+# Instalacja niezbędnych systemowych zależności
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Kopiowanie pliku requirements i instalacja zależności
+COPY backend/search/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Kopiowanie kodu aplikacji - WAŻNA ZMIANA: kopiujemy do katalogu głównego
+COPY backend/search/*.py .
+COPY backend/search/.env .
+
+# Upewnij się, że pliki mają odpowiednie uprawnienia
+RUN chmod +x *.py
+
+# Ustawienie zmiennych środowiskowych
+ENV PYTHONUNBUFFERED=1
+
+# Eksponowanie portu dla FastAPI
+EXPOSE 8000
+
+# UWAGA: uruchamiamy z plikiem main.py w katalogu głównym
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
