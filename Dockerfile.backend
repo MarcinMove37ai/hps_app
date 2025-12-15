@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Kopiowanie kodu aplikacji - WAŻNA ZMIANA: kopiujemy do katalogu głównego
 COPY backend/search/*.py .
-COPY backend/search/.env .
+
 
 # Upewnij się, że pliki mają odpowiednie uprawnienia
 RUN chmod +x *.py
