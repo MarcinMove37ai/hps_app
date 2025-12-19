@@ -1,11 +1,12 @@
-// src/middleware.ts
+// src/proxy.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Lista ścieżek publicznych, które nie wymagają autoryzacji
 const publicPaths = ['/login', '/register', '/restore'];
 
-export async function middleware(request: NextRequest) {
+// ✅ ZMIENIONE: middleware → proxy
+export async function proxy(request: NextRequest) {
   // Pobieranie i normalizacja ścieżki
   const { pathname } = request.nextUrl;
   const normalizedPath = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname || '/';
@@ -22,7 +23,6 @@ export async function middleware(request: NextRequest) {
 
   // Dla chronionych ścieżek nie wykonujemy żadnej weryfikacji w middleware
   // Pełna autoryzacja będzie obsługiwana przez AuthGuard na stronie klienta
-  // To upraszcza logikę i pozwala uniknąć duplikacji kodu uwierzytelniania
   return NextResponse.next();
 }
 
