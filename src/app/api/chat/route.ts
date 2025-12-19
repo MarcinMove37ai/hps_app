@@ -155,7 +155,7 @@ export async function POST(req: Request) {
 
     // 5. Wywołanie API Claude'a
     const modelResponse = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 1500,
       messages,
       system: systemPrompt,
