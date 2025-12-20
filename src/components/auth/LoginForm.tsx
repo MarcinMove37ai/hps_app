@@ -16,6 +16,24 @@ export default function LoginForm({ redirectParam }: LoginFormProps = {}) {
   const { signIn, loading, error, isAuthenticated, user, getRedirectPath } = useAuth();
   const searchParams = useSearchParams();
 
+  // Dodany stan do kontrolowania renderowania po stronie klienta
+  const [isClient, setIsClient] = useState(false);
+
+  // Stan do przechowywania wartości loading tylko po stronie klienta
+  const [clientLoading, setClientLoading] = useState(false);
+
+  // Inicjalizacja isClient po montażu komponentu
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Synchronizuj clientLoading z loading tylko po stronie klienta
+  useEffect(() => {
+    if (isClient) {
+      setClientLoading(loading);
+    }
+  }, [isClient, loading]);
+
   // Funkcja do zarządzania przekierowaniem po zalogowaniu
   // Opakowana w useCallback, aby uniknąć rekurencji w useEffect
   const handleRedirect = useCallback(() => {
@@ -68,6 +86,10 @@ export default function LoginForm({ redirectParam }: LoginFormProps = {}) {
   const registeredSuccess = searchParams.get('registered') === 'true';
   const blockedAccount = searchParams.get('blocked') === 'true';
 
+  // Użyj clientLoading tylko jeśli isClient jest true, w przeciwnym razie użyj false
+  const isDisabled = isClient ? clientLoading : false;
+  const buttonText = isClient ? (clientLoading ? 'Logowanie...' : 'Zaloguj się') : 'Zaloguj się';
+
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-sm mx-auto">
       <div className="text-center mb-4">
@@ -115,7 +137,7 @@ export default function LoginForm({ redirectParam }: LoginFormProps = {}) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900"
-              disabled={loading}
+              disabled={isDisabled}
             />
           </div>
         </div>
@@ -134,7 +156,7 @@ export default function LoginForm({ redirectParam }: LoginFormProps = {}) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900"
-              disabled={loading}
+              disabled={isDisabled}
             />
           </div>
         </div>
@@ -153,10 +175,10 @@ export default function LoginForm({ redirectParam }: LoginFormProps = {}) {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isDisabled}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Logowanie...' : 'Zaloguj się'}
+            {buttonText}
           </button>
         </div>
       </form>

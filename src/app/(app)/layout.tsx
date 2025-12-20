@@ -13,7 +13,8 @@ export default function AppLayout({
   children: React.ReactNode
 }) {
   const { checkAuthStatus, user } = useAuth();
-  const [isChecking, setIsChecking] = useState(true);
+  const [isChecking, setIsChecking] = useState(false); // ZMIENIONE: false zamiast true
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
   // Sprawdzenie czy użytkownik jest zablokowany
@@ -22,6 +23,7 @@ export default function AppLayout({
   // Sprawdzenie autoryzacji przy montowaniu komponentu
   useEffect(() => {
     const verifyAuthentication = async () => {
+      setIsChecking(true); // Ustawiamy true dopiero tutaj
       try {
         // Sprawdź tylko czy użytkownik jest zalogowany
         const isAuthed = await checkAuthStatus();
@@ -32,6 +34,7 @@ export default function AppLayout({
           return;
         }
 
+        setIsAuthenticated(true);
         // Zakończ sprawdzanie
         setIsChecking(false);
       } catch (error) {
@@ -45,7 +48,13 @@ export default function AppLayout({
 
   // Renderowanie podczas sprawdzania uwierzytelnienia
   if (isChecking) {
-    return <AdminLayout>{children}</AdminLayout>;
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-gray-500">Ładowanie...</div>
+        </div>
+      </AdminLayout>
+    );
   }
 
   // Jeśli użytkownik jest zablokowany, wyświetl specjalny komunikat

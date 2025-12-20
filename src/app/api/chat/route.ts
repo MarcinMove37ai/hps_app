@@ -95,17 +95,44 @@ interface SearchParams {
 
 export async function POST(req: Request) {
   try {
+    console.log('[API] ==================== NEW REQUEST ====================');
+    console.log('[API] Request received at:', new Date().toISOString());
+
+    // Sprawdź klucz API
     if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error('Missing ANTHROPIC_API_KEY');
+      console.error('[API] CRITICAL: Missing ANTHROPIC_API_KEY');
+      return NextResponse.json(
+        { error: 'Brak klucza API. Skontaktuj się z administratorem.' },
+        { status: 500 }
+      );
+    }
+    console.log('[API] ✓ ANTHROPIC_API_KEY is set');
+
+    // Parse request body
+    let body;
+    try {
+      body = await req.json();
+      console.log('[API] ✓ Request body parsed successfully');
+    } catch (parseError) {
+      console.error('[API] ERROR: Failed to parse request body:', parseError);
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
     }
 
-    const { message, conversationHistory = [], searchParams } = await req.json() as {
+    const { message, conversationHistory = [], searchParams } = body as {
       message: string;
       conversationHistory: ChatMessage[];
       searchParams: SearchParams;
     };
 
+    console.log('[API] Message:', message);
+    console.log('[API] Conversation history length:', conversationHistory.length);
+    console.log('[API] Search params:', JSON.stringify(searchParams, null, 2));
+
     if (!message) {
+      console.error('[API] ERROR: Missing message');
       return NextResponse.json(
         { error: 'Message is required' },
         { status: 400 }
@@ -121,18 +148,37 @@ export async function POST(req: Request) {
       ? [...userMessages, message]
       : [message];
 
-    console.log('Search mode:', searchParams.query_mode);
-    console.log('Search queries:', queries);
+    console.log('[API] Search mode:', searchParams.query_mode);
+    console.log('[API] Number of queries:', queries.length);
+    console.log('[API] Queries:', queries);
 
     // 2. Wyszukiwanie w bazie badań
-    const searchResults = await searchModule.search({
-      queries,
-      searchType: searchParams.search_type,
-      topK: searchParams.top_k,
-      alpha: searchParams.alpha
-    });
+    console.log('[API] Starting search...');
+    let searchResults;
+    try {
+      searchResults = await searchModule.search({
+        queries,
+        searchType: searchParams.search_type,
+        topK: searchParams.top_k,
+        alpha: searchParams.alpha
+      });
+      console.log('[API] ✓ Search completed successfully');
+      console.log('[API] Found results:', searchResults.results.length);
+    } catch (searchError) {
+      console.error('[API] ERROR: Search failed');
+      console.error('[API] Search error details:', searchError);
+      console.error('[API] Search error stack:', searchError instanceof Error ? searchError.stack : 'No stack');
+      return NextResponse.json(
+        {
+          error: `Błąd wyszukiwania: ${searchError instanceof Error ? searchError.message : 'Unknown error'}`,
+          details: searchError instanceof Error ? searchError.stack : undefined
+        },
+        { status: 500 }
+      );
+    }
 
     if (!searchResults.results.length) {
+      console.log('[API] No results found for query');
       return NextResponse.json({
         response: "Nie znaleziono odpowiednich badań dla tego zapytania. Proszę spróbować przeformułować pytanie.",
         sources: []
@@ -140,11 +186,14 @@ export async function POST(req: Request) {
     }
 
     // 3. Przygotowanie kontekstu z wyników
+    console.log('[API] Formatting search results...');
     const context = searchResults.results
       .map((result, index) => formatSearchResult(result as unknown as SearchResult, index))
       .join('\n\n');
+    console.log('[API] ✓ Context prepared, length:', context.length, 'characters');
 
     // 4. Przygotowanie historii konwersacji
+    console.log('[API] Preparing conversation history...');
     const messages = [
       ...prepareConversationHistory(conversationHistory),
       {
@@ -152,29 +201,73 @@ export async function POST(req: Request) {
         content: `Na podstawie tych badań:\n\n${context}\n\nPytanie: ${message}`
       }
     ];
+    console.log('[API] ✓ Messages prepared, total:', messages.length);
 
     // 5. Wywołanie API Claude'a
-    const modelResponse = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 1500,
-      messages,
-      system: systemPrompt,
-      temperature: 0.7,
-    });
+    console.log('[API] Calling Anthropic API...');
+    console.log('[API] Model: claude-sonnet-4-5');
+    console.log('[API] Max tokens: 1500');
+    console.log('[API] Temperature: 0.7');
 
-    return NextResponse.json({
-      response: modelResponse.content
-        .filter(block => block.type === 'text')
-        .map(block => block.text)
-        .join(''),
+    let modelResponse;
+    try {
+      modelResponse = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1500,
+        messages,
+        system: systemPrompt,
+        temperature: 0.7,
+      });
+      console.log('[API] ✓ Anthropic API call successful');
+      console.log('[API] Response ID:', modelResponse.id);
+      console.log('[API] Response tokens:', modelResponse.usage);
+    } catch (anthropicError) {
+      console.error('[API] ERROR: Anthropic API call failed');
+      console.error('[API] Anthropic error:', anthropicError);
+      console.error('[API] Anthropic error stack:', anthropicError instanceof Error ? anthropicError.stack : 'No stack');
+      return NextResponse.json(
+        {
+          error: `Błąd API Claude: ${anthropicError instanceof Error ? anthropicError.message : 'Unknown error'}`,
+          details: anthropicError instanceof Error ? anthropicError.stack : undefined
+        },
+        { status: 500 }
+      );
+    }
 
+    const responseText = modelResponse.content
+      .filter(block => block.type === 'text')
+      .map(block => block.text)
+      .join('');
+
+    console.log('[API] ✓ Response text extracted, length:', responseText.length, 'characters');
+
+    const finalResponse = {
+      response: responseText,
       sources: searchResults.results
-    });
+    };
+
+    console.log('[API] ✓ Final response prepared');
+    console.log('[API] Response contains', searchResults.results.length, 'sources');
+    console.log('[API] ==================== REQUEST COMPLETE ====================');
+
+    return NextResponse.json(finalResponse);
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('[API] ==================== UNHANDLED ERROR ====================');
+    console.error('[API] CRITICAL ERROR:', error);
+    console.error('[API] Error type:', error?.constructor?.name);
+    console.error('[API] Error message:', error instanceof Error ? error.message : 'Unknown');
+    console.error('[API] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('[API] ==================== ERROR END ====================');
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
+      {
+        error: error instanceof Error ? error.message : 'Nieoczekiwany błąd serwera',
+        errorType: error?.constructor?.name || 'Unknown',
+        details: process.env.NODE_ENV === 'development'
+          ? (error instanceof Error ? error.stack : undefined)
+          : undefined
+      },
       { status: 500 }
     );
   }

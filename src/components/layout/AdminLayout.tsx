@@ -184,7 +184,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
 
   // Filtrujemy menu na podstawie roli i statusu
   // Jeśli disableMenu=true, zwracamy pustą tablicę
+  // Podczas SSR (!isClient) zwracamy pustą tablicę, aby zapobiec błędom hydratacji
   const filteredMenuItems = disableMenu ? [] : menuItems.filter(item => {
+    // Na serwerze nie renderuj menu - zapobiega błędom hydratacji
+    if (!isClient) return false;
+
     // Sprawdź rolę
     const hasRequiredRole = item.roles.includes(userRoleFromAuth);
 
@@ -295,7 +299,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
                 </li>
               ))}
               {/* Wyświetl powiadomienie dla użytkowników oczekujących */}
-              {userStatus === 'pending' && (
+              {isClient && userStatus === 'pending' && (
                 <li className="mt-4">
                   <div className={`
                     flex items-center px-3 py-2
@@ -316,7 +320,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
                 </li>
               )}
               {/* Wyświetl powiadomienie dla użytkowników zablokowanych */}
-              {userStatus === 'blocked' && !disableMenu && (
+              {isClient && userStatus === 'blocked' && !disableMenu && (
                 <li className="mt-4">
                   <div className={`
                     flex items-center px-3 py-2
@@ -336,7 +340,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
                   </div>
                 </li>
               )}
-              {isMobile && (
+              {isClient && isMobile && (
                 <li>
                   <button
                     onClick={handleLogout}
@@ -368,9 +372,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
           ${isMobile ? 'ml-0' : disableMenu ? 'ml-0' : hoveredSidebar ? 'ml-64' : 'ml-20'}
           flex-1 overflow-auto mt-16`}
       >
-        <header className={`fixed top-0 left-0 w-full h-16 bg-white shadow-md z-50 flex items-center justify-between ${isMobile ? 'px-4' : 'px-6'}`}>
+        <header className="fixed top-0 left-0 w-full h-16 bg-white shadow-md z-50 flex items-center justify-between px-4 md:px-6">
           <div className="flex items-center">
-            {isMobile && !disableMenu && (
+            {isClient && isMobile && !disableMenu && (
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
@@ -401,25 +405,25 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700">
-                {user?.first_name && user?.last_name
+                {isClient && (user?.first_name && user?.last_name
                   ? `${user.first_name} ${user.last_name}`
-                  : user?.email || ''}
+                  : user?.email || '')}
               </span>
 
               {/* Zmieniona logika wyświetlania etykiet */}
-              {userRoleFromAuth === 'GOD' && (
+              {isClient && userRoleFromAuth === 'GOD' && (
                 <span className="text-xs px-2 py-1 rounded bg-violet-100 text-violet-800">
                   Super Admin
                 </span>
               )}
 
-              {userRoleFromAuth === 'ADMIN' && (
+              {isClient && userRoleFromAuth === 'ADMIN' && (
                 <span className="text-xs px-2 py-1 rounded bg-violet-100 text-violet-800">
                   Admin
                 </span>
               )}
 
-              {userRoleFromAuth === 'USER' && userStatus && (
+              {isClient && userRoleFromAuth === 'USER' && userStatus && (
                 <span className={`text-xs px-2 py-1 rounded ${
                   userStatus === 'pending'
                     ? 'bg-yellow-100 text-yellow-800'
@@ -431,7 +435,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
                 </span>
               )}
             </div>
-            {!isMobile && !disableMenu && (
+            {isClient && !isMobile && !disableMenu && (
               <button
                 onClick={handleLogout}
                 className="p-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
@@ -442,7 +446,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
             )}
 
             {/* Dodany przycisk wylogowania dla zablokowanych użytkowników */}
-            {(disableMenu || userStatus === 'blocked') && (
+            {isClient && (disableMenu || userStatus === 'blocked') && (
               <button
                 onClick={handleLogout}
                 className="p-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
@@ -467,7 +471,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
                   </div>
 
                   {/* Kod opiekuna na mobilnych urządzeniach - OBOK ścieżki strony po prawej */}
-                  {isMobile && (userRoleFromAuth === 'ADMIN' || userRoleFromAuth === 'GOD') && (
+                  {isClient && isMobile && (userRoleFromAuth === 'ADMIN' || userRoleFromAuth === 'GOD') && (
                     <div className="bg-white px-4 py-1 rounded-lg shadow-sm flex-1 flex justify-center items-center">
                       <span className="text-s text-gray-500">
                         Kod: {
@@ -502,7 +506,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, disableMenu = false
                 {/* Desktop layout - kod opiekuna po środku, data po prawej */}
                 <div className="hidden md:flex w-full justify-between items-center">
                   {/* Kod opiekuna na desktop - wyśrodkowany w ramce dopasowanej do tekstu */}
-                  {!isMobile && (userRoleFromAuth === 'ADMIN' || userRoleFromAuth === 'GOD') && (
+                  {isClient && !isMobile && (userRoleFromAuth === 'ADMIN' || userRoleFromAuth === 'GOD') && (
                     <div className="flex justify-center flex-1">
                       <div className="bg-white px-4 py-1 rounded-lg shadow-sm inline-flex items-center relative">
                         <span className="text-s text-gray-500">

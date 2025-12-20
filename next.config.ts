@@ -2,31 +2,30 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // ❌ USUNIĘTE: eslint (przestarzałe w Next.js 16)
-
   typescript: {
     ignoreBuildErrors: true,
   },
 
-experimental: {
-  serverMinification: process.env.NODE_ENV === 'production', // włącz minifikację w produkcji
-  serverActions: {
-    allowedOrigins: process.env.NODE_ENV === 'production'
-      ? [
-          'localhost:3000',
-          'healthprosystem.com', // zamień na swoją domenę Railway
-          // dodaj inne domeny jeśli masz
-        ]
-      : ['*'] // w developmencie pozwalaj na wszystkie
-  }
-},
+  // ✅ POPRAWIONE: przeniesione z experimental
+  serverExternalPackages: ['pg', 'pg-native'],
+
+  experimental: {
+    serverMinification: process.env.NODE_ENV === 'production',
+    serverActions: {
+      allowedOrigins: process.env.NODE_ENV === 'production'
+        ? [
+            'localhost:3000',
+            'healthprosystem.com',
+          ]
+        : ['*']
+    },
+  },
 
   reactStrictMode: false,
   staticPageGenerationTimeout: 1000,
   poweredByHeader: false,
   compress: true,
 
-  // ✅ POPRAWIONE: images.domains → images.remotePatterns
   images: {
     unoptimized: process.env.NODE_ENV === 'production',
     remotePatterns: [
